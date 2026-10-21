@@ -1,35 +1,23 @@
-"""Các kiểm thử do Nguyễn Thành Vinh phụ trách (Phần A - Nhóm 6).
-
+"""
 Bàn giao cho Nguyễn Anh Quân tổng hợp vào test_nhom.py.
-Hai kiểm thử đáp ứng đúng ma trận phân công D1 trong phan_viec/A_Vinh/README.md:
 1. Heuristic bằng 0 ở goal tùy chỉnh; có kỳ vọng được giải thích bằng tay.
 2. Một cạnh kiểm tính nhất quán cho heuristic; đồng thời minh họa phản ví dụ dùng tổng hai cận.
 """
-import sys
 import unittest
-from pathlib import Path
-
-# Tìm module pancake dù chạy từ thư mục A_Vinh hay từ gốc repo
-_current_dir = Path(__file__).resolve().parent
-for _p in (_current_dir, _current_dir.parents[1], _current_dir.parents[2] / "GiuaKy_Pancake_UCS_AStar_10Ngay"):
-    if (_p / "pancake.py").exists() and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-        break
-
 from pancake import flip, make_heuristic, check_path
 
 
 class TestNguyenThanhVinh(unittest.TestCase):
 
     def test_vinh_01_custom_goal_heuristic_zero_and_hand_prediction(self):
-        """[Vinh 1/2] Kiểm thử heuristic trên đích tùy chỉnh và dự đoán tính tay.
-        
+        """Kiểm thử heuristic trên đích tùy chỉnh và dự đoán tính tay.
+
         Kỳ vọng suy ra bằng tay độc lập:
         1. Đích tùy chỉnh t = (3, 1, 4, 2):
            - Bảng thứ hạng đích rho_t: 3->1, 1->2, 4->3, 2->4.
            - Tại đúng trạng thái đích s = t, tất cả các bánh đều có thứ hạng khớp vị trí.
              => h_L(t; t) = 0, h_gap(t; t) = 0, h_combined(t; t) = 0.
-        
+
         2. Xét trạng thái lân cận s1 = flip(t, 2) = (1, 3, 4, 2) với k = 2:
            - Dãy thứ hạng theo rho_t: (rho_t(1), rho_t(3), rho_t(4), rho_t(2)) = (2, 1, 3, 4).
            - Bánh sai thứ hạng: ở vị trí 1 là hạng 2 (sai), vị trí 2 là hạng 1 (sai).
@@ -57,20 +45,20 @@ class TestNguyenThanhVinh(unittest.TestCase):
         self.assertEqual(h_combined(s1), 2, "Kỳ vọng tính tay h_combined(s1) = 2")
 
     def test_vinh_02_heuristic_consistency_edge_and_sum_counterexample(self):
-        """[Vinh 2/2] Kiểm thử tính nhất quán trên một cạnh và phản ví dụ tổng hai cận.
-        
+        """Kiểm thử tính nhất quán trên một cạnh và phản ví dụ tổng hai cận.
+
         Kỳ vọng suy ra bằng tay độc lập:
         1. Trạng thái S0 = (6, 5, 4, 3, 2, 1), đích chuẩn (1, 2, 3, 4, 5, 6):
            - Bánh lớn nhất sai vị trí: bánh 6 => h_L(S0) = 6.
            - Đĩa giả 7 vào đáy (6, 5, 4, 3, 2, 1, 7): chỉ cặp (1, 7) đứt => B(S0) = 1 => h_B(S0) = 2.
            - Heuristic kết hợp: h_M(S0) = max(6, 2) = 6.
-        
+
         2. Kiểm tra cạnh chuyển tiếp với k = 2: child = flip(S0, 2) = (5, 6, 4, 3, 2, 1):
            - Chi phí bước: c(S0, child) = 2.
            - Tại child: bánh 6 vẫn sai vị trí => h_L(child) = 6.
            - Tính nhất quán yêu cầu: h(S0) - h(child) <= c(S0, child) = 2.
            - Thực tế: 6 - 6 = 0 <= 2 (thỏa mãn tính nhất quán).
-        
+
         3. Minh họa phản ví dụ dùng tổng hai cận h_Sigma = h_L + h_B:
            - h_Sigma(S0) = h_L(S0) + h_B(S0) = 6 + 2 = 8.
            - Tuy nhiên, chỉ cần đúng 1 thao tác flip(6) là đưa S0 về đích với chi phí tối ưu = 6.
@@ -95,8 +83,8 @@ class TestNguyenThanhVinh(unittest.TestCase):
         self.assertLessEqual(h_M(s0) - h_M(child), k, "h_M vi phạm tính nhất quán")
 
         # 3. Phản ví dụ: Heuristic cộng tổng h_Sigma vi phạm tính chấp nhận được
-        h_sigma = h_L(s0) + h_B(s0)  # = 8
-        optimal_cost_s0 = 6          # Chỉ cần flip(6) là đến đích với chi phí 6
+        h_sigma = h_L(s0) + h_B(s0)
+        optimal_cost_s0 = 6
         self.assertEqual(h_sigma, 8)
         self.assertGreater(h_sigma, optimal_cost_s0,
                            "Phản ví dụ: h_Sigma phải vượt quá chi phí thực tế tối ưu để chứng minh vi phạm")
