@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="vi" data-themes="catppuccin-mocha,tokyo-night,sunset-warm,editorial-serif">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lật chồng bánh Pancake: UCS và A* · Nhóm 6</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" id="theme-link" href="assets/themes/catppuccin-mocha.css">
+<link rel="stylesheet" href="assets/animations/animations.css">
+<link rel="stylesheet" href="pancake-widget.css">
+<style>
+/* Vietnamese typography fallback & custom slide deck styles */
+:root {
+  --font-sans: 'Inter', 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+}
+
+/* Specific custom layouts to ensure perfect fit without clipping */
+.deck {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Header pill & chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+}
+
+.chip-accent {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.chip-bad {
+  background: color-mix(in srgb, var(--bad) 18%, var(--surface));
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+}
+
+.chip-good {
+  background: color-mix(in srgb, var(--good) 18%, var(--surface));
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 40%, transparent);
+}
+
+/* Table styling */
+.tbl-compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-top: 12px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.tbl-compact th, .tbl-compact td {
+  padding: 8px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.tbl-compact th {
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+}
+.tbl-compact tr:last-child td {
+  border-bottom: none;
+}
+.tbl-compact td.num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-2);
+}
+
+/* Flow diagram layout */
+.flow-pancake {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+.flow-pancake .node {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 14px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.flow-pancake .node.hl {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent), var(--shadow);
+}
+.flow-pancake .node .ic {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+.flow-pancake .node h4 {
+  font-size: 1rem;
+  margin: 0 0 4px;
+  color: var(--text-1);
+}
+.flow-pancake .node p {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  margin: 0;
+  line-height: 1.4;
+}
+.flow-pancake .arr {
+  color: var(--text-3);
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Diff trace styling */
+.diff-trace {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.diff-trace .hd {
+  background: var(--surface-2);
+  color: var(--text-2);
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+.diff-trace .row {
+  display: flex;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+.diff-trace .row:last-child {
+  border-bottom: none;
+}
+.diff-trace .row.highlight {
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  border-left: 3px solid var(--warn);
+}
+.diff-trace .num-col {
+  width: 22px;
+  color: var(--text-3);
+  font-weight: bold;
+}
+.diff-trace .state-col {
+  flex: 1;
+  color: var(--text-1);
+}
+.diff-trace .val-col {
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+/* SVG Bar Chart Styling */
+.bar-chart-container {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-top: 16px;
+  box-shadow: var(--shadow);
+}
+.chart-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 140px;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.chart-row:last-child {
+  margin-bottom: 0;
+}
+.chart-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.chart-bar-wrap {
+  display: flex;
+  align-items: center;
+  height: 10px;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.chart-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.chart-stats {
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  text-align: right;
+}
+.chart-stats b {
+  color: var(--accent);
+}
+
+/* Stat banner row */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  text-align: center;
+}
+.kpi-num {
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  line-height: 1.1;
+}
+.kpi-label {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+/* Red counterexample alert box */
+.alert-box {
+  background: color-mix(in srgb, var(--bad) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-top: 12px;
+}
+.alert-box-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--bad);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.alert-box p {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Race layout comparison cards */
+.race-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+  margin-top: 10px;
+}
+</style>
+</head>
+<body class="tpl-presenter-mode-reveal">
+<div class="deck">
+
+  <!-- ======================================================================
+       SLIDE 1: COVER (layout: cover)
+       ====================================================================== -->
+  <section class="slide is-active" data-title="Bìa: Đề tài Nhóm 6">
+    <p class="kicker">Biểu diễn tri thức & Tìm kiếm nâng cao · TS. Nguyễn Bích Vân · IAI–UET–VNU</p>
+    <h1 class="h1 anim-fade-up" data-anim="fade-up" style="margin-top: 8px;">
+      Lật chồng bánh Pancake:<br>
+      <span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;">
+        UCS và A* — Ít lần lật chưa chắc ít chi phí
+      </span>
+    </h1>
+    
+    <div class="grid g2 mt-m" style="align-items: center;">
+      <div>
+        <p class="lede" style="font-size: 1.05rem;">
+          Tối ưu hóa tổng chi phí lật <span class="mono">c(k) = k</span> trên không gian hoán vị <span class="mono">n!</span>.
+        </p>
+        <div class="card card-soft mt-s" style="padding: 14px 18px;">
+          <h4 style="margin: 0 0 6px; font-size: 0.92rem; color: var(--accent);">Nhóm 6:</h4>
+          <p class="dim" style="font-size: 0.85rem; line-height: 1.6; margin: 0;">
+            1. Nguyễn Thành Vinh (Mô hình & Heuristic)<br>
+            2. Kiều Hoàng Sơn (So sánh & Slide)<br>
+            3. Nguyễn Thế Sơn (Thực nghiệm & Đóng gói)<br>
+            4. Nguyễn Anh Quân (Kiểm thử & Đóng góp)
+          </p>
+        </div>
+      </div>
+      <div>
+        <!-- Interactive Auto-looping Pancake Widget on S0 -->
+        <div class="pk" data-start="6,5,4,3,2,1" data-goal="1,2,3,4,5,6" data-actions="6" data-mode="auto" data-title="Minh họa S0: 1 lần lật flip(6) về Đích"></div>
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Phím: S (Ghi chú / Presenter) · T (Đổi theme) · O (Tổng quan) · ← → (Chuyển trang)</span>
+      <span class="slide-number" data-current="1" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Nguyễn Thành Vinh</strong>.</p>
+      <p>Kính chào cô và các bạn, Nhóm 6 xin bảo vệ bài tập giữa kỳ đề tài <strong>Lật chồng bánh Pancake bằng UCS và A*</strong>. Điểm cốt lõi của bài toán là tìm chuỗi lật có <strong>tổng chi phí nhỏ nhất</strong>, qua đó chứng minh hiện tượng: <strong>ít bước lật chưa chắc đã ít chi phí</strong>.</p>
+      <p>Sau đây, chúng em xin đi vào chi tiết mô hình toán học và kích thước không gian trạng thái.</p>
+      <p>Có thể bị hỏi: Vì sao chọn bài toán pancake? → Vì đây là bài toán hoán vị kinh điển, không gian n! bùng nổ theo hàm mũ, rất trực quan để so sánh thuật toán tìm kiếm mù và có thông tin.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 2: MÔ HÌNH KHÔNG GIAN TRẠNG THÁI (layout: two-column)
+       ====================================================================== -->
+  <section class="slide" data-title="Mô hình bài toán">
+    <p class="kicker">Mô hình toán học · Không gian trạng thái</p>
+    <h2 class="h2">Không gian hoán vị & Chi phí bước <span class="mono">c(k) = k</span></h2>
+
+    <div class="grid g2 mt-m" style="align-items: start;">
+      <div>
+        <!-- Manual Interactive Widget on S0 -->
+        <div class="pk" data-start="6,5,4,3,2,1" data-goal="1,2,3,4,5,6" data-mode="manual" data-title="Thao tác tự do trên S0 = (6,5,4,3,2,1)"></div>
+      </div>
+
+      <div class="card anim-fade-right" data-anim="fade-right">
+        <h3 style="font-size: 1.05rem; margin-top: 0; color: var(--accent);">Quy chuẩn hình thức:</h3>
+        <ul style="padding-left: 18px; margin: 8px 0; font-size: 0.88rem; line-height: 1.6; color: var(--text-2);">
+          <li><b>Trạng thái:</b> Hoán vị <span class="mono">s = (s₁, …, sₙ)</span> từ đỉnh xuống đáy đĩa.</li>
+          <li><b>Thao tác:</b> <span class="mono">flip(k)</span> đảo tiền tố <span class="mono">k</span> bánh (<span class="mono">k ∈ {2, …, n}</span>).</li>
+          <li><b>Chi phí:</b> <span class="mono">c(k) = k</span> (tỷ lệ độ sâu lật, <i>khác với chi phí 1</i>).</li>
+          <li><b>Mục tiêu:</b> Tối thiểu hóa <span class="mono">Σk</span> đưa <span class="mono">s₀</span> về đích <span class="mono">(1, 2, …, n)</span>.</li>
+        </ul>
+
+        <h4 style="font-size: 0.85rem; margin: 12px 0 4px; color: var(--text-1);">Kích thước không gian & Hệ số rẽ nhánh:</h4>
+        <table class="tbl-compact">
+          <thead>
+            <tr><th>Số bánh n</th><th>Số trạng thái |S| = n!</th><th>Láng giềng b = n − 1</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><b>n = 6</b></td><td class="num">720</td><td class="num">5</td></tr>
+            <tr><td><b>n = 7</b></td><td class="num">5.040</td><td class="num">6</td></tr>
+            <tr><td><b>n = 8</b></td><td class="num">40.320</td><td class="num">7</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Nhóm 6 · UCS & A* Pancake</span>
+      <span class="slide-number" data-current="2" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Nguyễn Thành Vinh</strong>.</p>
+      <p>Mỗi trạng thái là một tuple hoán vị n phần tử. Thao tác <strong>flip(k)</strong> lật ngược k bánh trên đỉnh với <strong>chi phí đúng bằng k</strong>. Vì chi phí tỷ lệ với số lượng bánh, bài toán hoàn toàn khác biệt với bài toán tìm số bước lật tối thiểu. Không gian trạng thái bùng nổ theo <strong>n giai thừa</strong>, với n=8 đạt <strong>40.320 trạng thái</strong>.</p>
+      <p>Để duyệt không gian này tối ưu, thuật toán cần chiến lược quản lý heap chuẩn xác.</p>
+      <p>Có thể bị hỏi: Luôn đến được đích không? → Luôn đến được đích; quy nạp chứng minh đưa từng bánh lớn về đáy bằng tối đa 2 lần lật.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 3: THUẬT TOÁN & QUY TRÌNH (layout: flow-diagram)
+       ====================================================================== -->
+  <section class="slide" data-title="Thuật toán UCS & A*">
+    <p class="kicker">Thuật toán tìm kiếm · Cấu trúc Min-Heap</p>
+    <h2 class="h2">Quy trình UCS và A* kiểm soát mở rộng</h2>
+
+    <div class="flow-pancake">
+      <div class="node">
+        <div class="ic">📥</div>
+        <h4>1. OPEN Heap</h4>
+        <p>Min-heap theo <span class="mono">f = g + h</span>.<br>Hòa f: FIFO bằng ID.</p>
+      </div>
+      <div class="arr">→</div>
+      <div class="node">
+        <div class="ic">⚡</div>
+        <h4>2. Pop Node</h4>
+        <p>Lấy đỉnh có <span class="mono">f</span> bé nhất.<br>Tăng <span class="mono">valid_pops</span>.</p>
+      </div>
+      <div class="arr">→</div>
+      <div class="node">
+        <div class="ic">🛡️</div>
+        <h4>3. Lọc Stale</h4>
+        <p>Nếu <span class="mono">g ≠ best_g[s]</span>,<br>bỏ qua ngay lập tức.</p>
+      </div>
+      <div class="arr">→</div>
+      <div class="node hl">
+        <div class="ic">🎯</div>
+        <h4>4. Đích tại POP</h4>
+        <p>Dừng khi pop tới goal.<br><b>Không dừng khi sinh!</b></p>
+      </div>
+      <div class="arr">→</div>
+      <div class="node">
+        <div class="ic">🌿</div>
+        <h4>5. Sinh con</h4>
+        <p>Thử <span class="mono">k = 2..n</span>.<br><span class="mono">new_g &lt; best_g</span>: Push.</p>
+      </div>
+    </div>
+
+    <div class="grid g3 mt-l" style="align-items: center;">
+      <div class="chip chip-accent" style="justify-content: center; padding: 10px;">
+        📌 Node ≠ State: 1 trạng thái có thể lưu nhiều lần trong Heap
+      </div>
+      <div class="chip chip-accent" style="justify-content: center; padding: 10px;">
+        📌 OPEN ≠ best_g: best_g theo dõi chi phí tối ưu đã biết
+      </div>
+      <div class="chip chip-good" style="justify-content: center; padding: 10px;">
+        ✓ Tối ưu toàn cục: Khi chi phí c ≥ 2 & h nhất quán
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Nhóm 6 · UCS & A* Pancake</span>
+      <span class="slide-number" data-current="3" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Nguyễn Thành Vinh</strong>.</p>
+      <p>Đây là quy trình chuẩn của cả UCS và A*. Điểm cốt tử thứ nhất: <strong>chỉ kiểm tra đích khi pop</strong>, vì kiểm tra lúc sinh sẽ mất tính tối ưu khi chi phí các bước không bằng nhau. Điểm thứ hai: <strong>lọc nút stale</strong> dựa trên bảng best_g giúp tiết kiệm bộ nhớ và tránh mở rộng lặp.</p>
+      <p>Tiếp theo, sức mạnh của A* phụ thuộc vào cách ta xây dựng hàm heuristic.</p>
+      <p>Có thể bị hỏi: Tại sao cần sequence ID khi hòa f? → Để phá vỡ thế hòa theo đúng quy tắc FIFO xác định, giúp thuật toán hoàn toàn lặp lại được kết quả giữa các lần chạy.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 4: THIẾT KẾ HEURISTIC (layout: two-column)
+       ====================================================================== -->
+  <section class="slide" data-title="Thiết kế Heuristic">
+    <p class="kicker">Hàm đánh giá · Tính chất nhất quán</p>
+    <h2 class="h2">Thiết kế Heuristic: <span class="mono">h<sub>L</sub>, h<sub>B</sub>, h<sub>M</sub></span> & Phản ví dụ</h2>
+
+    <div class="grid g2 mt-m" style="align-items: start;">
+      <div>
+        <!-- Annotate mode widget on H with initial layers enabled -->
+        <div class="pk pk-anno-active pk-breaks-active" data-start="3,1,4,2,5,6" data-goal="1,2,3,4,5,6" data-mode="annotate" data-title="Khảo sát H = (3,1,4,2,5,6)"></div>
+      </div>
+
+      <div class="card anim-fade-right" data-anim="fade-right">
+        <h3 style="font-size: 1.05rem; margin-top: 0; color: var(--accent);">Định nghĩa 3 Heuristic:</h3>
+        <ul style="padding-left: 18px; margin: 8px 0; font-size: 0.88rem; line-height: 1.5; color: var(--text-2);">
+          <li><b>h<sub>L</sub> (Bánh lớn nhất sai vị trí):</b> Bánh lớn nhất chưa về vị trí đích (<span class="mono">h<sub>L</sub>(H) = 4</span>).</li>
+          <li><b>h<sub>B</sub> = 2 × B (Điểm đứt):</b> Số cặp kề có <span class="mono">|sᵢ − sᵢ₊₁| ≠ 1</span> (<span class="mono">B=4 ⇒ h<sub>B</sub>(H) = 8</span>).</li>
+          <li><b>h<sub>M</sub> = max(h<sub>L</sub>, h<sub>B</sub>):</b> Giữ trọn tính trội: <span class="mono">h<sub>M</sub> ≥ h<sub>L</sub></span> và <span class="mono">h<sub>M</sub> ≥ h<sub>B</sub></span>.</li>
+        </ul>
+        <p style="font-size: 0.82rem; color: var(--good); margin: 6px 0; font-weight: 700;">
+          ✓ Cả 3 hàm đều nhất quán (consistent) ⇒ Chấp nhận được (admissible, h ≤ h*).
+        </p>
+
+        <!-- Red alert counterexample -->
+        <div class="alert-box">
+          <div class="alert-box-title">⚠️ Phản ví dụ: Phép cộng h<sub>Σ</sub> = h<sub>L</sub> + h<sub>B</sub></div>
+          <p>
+            Tại <span class="mono">S₀ = (6,5,4,3,2,1)</span>: <span class="mono">h<sub>L</sub> = 6, B = 1 ⇒ h<sub>B</sub> = 2</span>.<br>
+            <span class="mono">h<sub>Σ</sub>(S₀) = 6 + 2 = 8 &gt; h*(S₀) = 6</span> ⇒ <b>Không chấp nhận được!</b>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Nhóm 6 · UCS & A* Pancake</span>
+      <span class="slide-number" data-current="4" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Nguyễn Thành Vinh</strong>.</p>
+      <p>Nhóm đề xuất <strong>hL</strong> dựa trên bánh sai vị trí lớn nhất và <strong>hB</strong> dựa trên số điểm đứt nhân đôi. Kết hợp lại bằng <strong>hM = max(hL, hB)</strong>, đảm bảo tính trội hơn từng thành phần. Cực kỳ quan trọng: <strong>không được cộng hΣ = hL + hB</strong> vì tại S0 sẽ ước lượng 8, lớn hơn chi phí thực 6, làm A* mất tính tối ưu.</p>
+      <p>Sau đây, bạn Kiều Hoàng Sơn sẽ trình bày minh chứng trực quan: ít bước lật chưa chắc ít chi phí.</p>
+      <p>Có thể bị hỏi: Tại sao hB lại nhân 2? → Vì mỗi phép lật tốn chi phí k ≥ 2 nhưng chỉ có thể xóa bỏ tối đa 1 điểm đứt liên kết.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 5: ÍT LẦN LẬT ≠ ÍT CHI PHÍ (layout: comparison)
+       ====================================================================== -->
+  <section class="slide" data-title="Chủ đề: Ít lần lật ≠ Ít chi phí">
+    <p class="kicker">Chủ đề then chốt · So sánh trực tiếp trên P = (5,6,3,2,4,1)</p>
+    <h2 class="h2">Nghịch lý: Ít lần lật chưa chắc ít chi phí!</h2>
+
+    <!-- Big statement highlight pill -->
+    <div style="background: color-mix(in srgb, var(--accent) 15%, var(--surface)); border: 1px solid var(--accent); border-radius: var(--radius-sm); padding: 8px 16px; text-align: center; margin-top: 8px;">
+      <span style="font-size: 1.05rem; font-weight: 800; color: var(--accent);">
+        Lộ trình π<sub>B</sub>: 5 lần lật (chi phí 17) &lt; Lộ trình π<sub>A</sub>: 4 lần lật (chi phí 18)
+      </span>
+    </div>
+
+    <div class="race-grid">
+      <!-- Path A: 4 flips, cost 18 -->
+      <div>
+        <div class="pk" data-start="5,6,3,2,4,1" data-goal="1,2,3,4,5,6" data-actions="4,5,3,6" data-group="race" data-title="Lộ trình πA (4 lần lật · Chi phí 18)"></div>
+      </div>
+
+      <!-- Path B: 5 flips, cost 17 (Optimal!) -->
+      <div>
+        <div class="pk" data-start="5,6,3,2,4,1" data-goal="1,2,3,4,5,6" data-actions="2,6,2,4,3" data-group="race" data-title="Lộ trình πB (5 lần lật · Chi phí 17 — TỐI ƯU)"></div>
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Nhóm 6 · UCS xác nhận πB tối ưu (mở rộng 293 nút)</span>
+      <span class="slide-number" data-current="5" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Kiều Hoàng Sơn</strong>.</p>
+      <p>Đây là kết quả cốt lõi của đề tài. Tại trạng thái P, lộ trình <strong>πA chỉ cần 4 bước</strong> nhưng do phải lật sâu k=4, 5, 6 nên <strong>tổng chi phí là 18</strong>. Trong khi đó, lộ trình <strong>πB mất 5 bước</strong> nhưng tận dụng các lần lật nông k=2, 3 nên <strong>tổng chi phí chỉ là 17</strong>.</p>
+      <p>UCS đã duyệt toàn bộ và chứng minh 17 mới là chi phí tối ưu toàn cục.</p>
+      <p>Có thể bị hỏi: Tại sao BFS tìm kiếm theo số bước lại chọn sai? → Vì BFS mặc định chi phí bước là 1, nên nó sẽ dừng ngay ở độ sâu 4 với chi phí 18 mà bỏ qua nghiệm tối ưu chi phí ở độ sâu 5.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 6: TÍNH TAY & VẾT TRẠNG THÁI H (layout: diff)
+       ====================================================================== -->
+  <section class="slide" data-title="Vết chạy tay trạng thái H">
+    <p class="kicker">Đối chiếu thủ công · Vết thực thi trạng thái H = (3,1,4,2,5,6)</p>
+    <h2 class="h2">Chi tiết 6 lần POP đầu tiên: UCS vs A*/h<sub>L</sub></h2>
+
+    <div class="grid g2 mt-m" style="align-items: start;">
+      <!-- Column 1: UCS Trace -->
+      <div class="diff-trace">
+        <div class="hd"><span>🔵 UCS (Uniform Cost Search)</span><span class="mono">g | h=0 | f=g</span></div>
+        <div class="row"><span class="num-col">1</span><span class="state-col">(3,1,4,2,5,6)</span><span class="val-col">0 | 0 | 0</span></div>
+        <div class="row"><span class="num-col">2</span><span class="state-col">(1,3,4,2,5,6)</span><span class="val-col">2 | 0 | 2</span></div>
+        <div class="row"><span class="num-col">3</span><span class="state-col">(4,1,3,2,5,6)</span><span class="val-col">3 | 0 | 3</span></div>
+        <div class="row"><span class="num-col">4</span><span class="state-col">(2,4,1,3,5,6)</span><span class="val-col">4 | 0 | 4</span></div>
+        <div class="row highlight"><span class="num-col">5</span><span class="state-col"><b>(5,2,4,1,3,6)</b></span><span class="val-col">5 | 0 | 5</span></div>
+        <div class="row"><span class="num-col">6</span><span class="state-col">(4,3,1,2,5,6)</span><span class="val-col">5 | 0 | 5</span></div>
+      </div>
+
+      <!-- Column 2: A* hL Trace -->
+      <div class="diff-trace">
+        <div class="hd"><span>🟣 A* / h<sub>L</sub> (Heuristic Search)</span><span class="mono">g | h<sub>L</sub> | f</span></div>
+        <div class="row"><span class="num-col">1</span><span class="state-col">(3,1,4,2,5,6)</span><span class="val-col">0 | 4 | 4</span></div>
+        <div class="row"><span class="num-col">2</span><span class="state-col">(1,3,4,2,5,6)</span><span class="val-col">2 | 4 | 6</span></div>
+        <div class="row"><span class="num-col">3</span><span class="state-col">(4,1,3,2,5,6)</span><span class="val-col">3 | 4 | 7</span></div>
+        <div class="row"><span class="num-col">4</span><span class="state-col">(2,4,1,3,5,6)</span><span class="val-col">4 | 4 | 8</span></div>
+        <div class="row highlight"><span class="num-col">5</span><span class="state-col"><b>(4,3,1,2,5,6)</b></span><span class="val-col">5 | 4 | 9</span></div>
+        <div class="row"><span class="num-col">6</span><span class="state-col">(1,4,3,2,5,6)</span><span class="val-col">5 | 4 | 9</span></div>
+      </div>
+    </div>
+
+    <div class="grid g2 mt-s">
+      <div class="card card-soft" style="padding: 10px 14px;">
+        <h4 style="margin: 0 0 4px; font-size: 0.85rem; color: var(--warn);">⚡ Rẽ nhánh tại lần 5:</h4>
+        <p class="dim" style="font-size: 0.8rem; margin: 0; line-height: 1.4;">
+          UCS chọn <span class="mono">(5,2,4,1,3,6)</span> do hòa g=5 và vào heap trước (seq 4 &lt; 6).<br>
+          A* chọn <span class="mono">(4,3,1,2,5,6)</span> vì <span class="mono">f = 5 + 4 = 9 &lt; 5 + 5 = 10</span>.
+        </p>
+      </div>
+
+      <div class="card card-soft" style="padding: 10px 14px;">
+        <h4 style="margin: 0 0 4px; font-size: 0.85rem; color: var(--good);">🛡️ Tỉa đường cũ (Lần 2):</h4>
+        <p class="dim" style="font-size: 0.8rem; margin: 0; line-height: 1.4;">
+          Từ <span class="mono">(1,3,4,2,5,6)</span> flip(2) quay lại H với <span class="mono">new_g = 4</span>.<br>
+          Do <span class="mono">new_g ≥ best_g[H] = 0</span> ⇒ Lập tức loại bỏ, không push vào heap!
+        </p>
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Nhóm 6 · UCS & A* Pancake</span>
+      <span class="slide-number" data-current="6" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Kiều Hoàng Sơn</strong>.</p>
+      <p>Bảng vết chạy tay giúp ta hiểu tường minh cơ chế lựa chọn. Hai thuật toán <strong>khác nhau ngay tại lần lấy thứ 5</strong>: UCS hòa g=5 nên chọn theo thứ tự FIFO; còn A* đánh giá được nút có triển vọng hơn với f=9 thay vì 10. Ở lần 2, phép lật tạo chu trình quay lại H bị <strong>chặn đứng bởi best_g</strong>.</p>
+      <p>Tiếp theo, bạn Nguyễn Thế Sơn sẽ trình bày bảng tổng hợp kết quả 36 cấu hình thực nghiệm.</p>
+      <p>Có thể bị hỏi: Làm sao chứng minh trạng thái ở lần 2 bị tỉa? → Vì biến best_g ghi nhớ chi phí tốt nhất của H là 0, đường mới có chi phí 4 lớn hơn nên bị bỏ qua ngay.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 7: KẾT QUẢ THỰC NGHIỆM 36 CẤU HÌNH (layout: stat-highlight)
+       ====================================================================== -->
+  <section class="slide" data-title="Kết quả thực nghiệm 36 cấu hình">
+    <p class="kicker">Thực nghiệm kiểm chứng · 6 bộ dữ liệu mẫu (S0, H, P, Q, N1, N2)</p>
+    <h2 class="h2">Đánh giá 36 cấu hình & Tỉ lệ giảm không gian tìm kiếm</h2>
+
+    <!-- KPI Row -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-num">36/36</div>
+        <div class="kpi-label">Cấu hình cùng ra chi phí tối ưu</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-num">91,1%</div>
+        <div class="kpi-label">Giảm mở rộng tối đa (N1, A*/h<sub>M</sub>)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-num">43,9%</div>
+        <div class="kpi-label">Giảm mở rộng tại case Q khó nhất (h<sub>L</sub>)</div>
+      </div>
+    </div>
+
+    <!-- Bar Chart SVG/CSS Component -->
+    <div class="bar-chart-container">
+      <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--text-3); margin-bottom: 6px;">
+        <span>CASE / CHI PHÍ / BƯỚC</span>
+        <span>SỐ NÚT MỞ RỘNG (UCS chuẩn hóa 100% · Xám: UCS, Xanh: h<sub>L</sub>, Tím: h<sub>M</sub>)</span>
+        <span>TỈ LỆ GIẢM (R)</span>
+      </div>
+
+      <!-- S0 -->
+      <div class="chart-row">
+        <div class="chart-label">S₀ (c=6, 1)</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 100%; background: var(--text-3);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 14.3%; background: var(--accent-2);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 14.3%; background: var(--accent);"></div></div>
+        </div>
+        <div class="chart-stats">7 / 1 / 1 · <b>R=85,7%</b></div>
+      </div>
+
+      <!-- H -->
+      <div class="chart-row">
+        <div class="chart-label">H (c=11, 4)</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 100%; background: var(--text-3);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 22.4%; background: var(--accent-2);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 13.8%; background: var(--accent);"></div></div>
+        </div>
+        <div class="chart-stats">58 / 13 / 8 · <b>R=86,2%</b></div>
+      </div>
+
+      <!-- P -->
+      <div class="chart-row">
+        <div class="chart-label">P (c=17, 5)</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 100%; background: var(--text-3);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 22.2%; background: var(--accent-2);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 11.9%; background: var(--accent);"></div></div>
+        </div>
+        <div class="chart-stats">293 / 65 / 35 · <b>R=88,1%</b></div>
+      </div>
+
+      <!-- Q -->
+      <div class="chart-row">
+        <div class="chart-label">Q (c=24, 7)</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 100%; background: var(--text-3);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 56.1%; background: var(--accent-2);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 32.1%; background: var(--accent);"></div></div>
+        </div>
+        <div class="chart-stats">717 / 402 / 230 · <b>R=67,9%</b></div>
+      </div>
+
+      <!-- N1 -->
+      <div class="chart-row">
+        <div class="chart-label">N₁ (c=25, 6)</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 100%; background: var(--text-3);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 24.2%; background: var(--accent-2);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 8.9%; background: var(--accent);"></div></div>
+        </div>
+        <div class="chart-stats">2.783 / 674 / 248 · <b>R=91,1%</b></div>
+      </div>
+
+      <!-- N2 -->
+      <div class="chart-row">
+        <div class="chart-label">N₂ (c=28, 7)</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 100%; background: var(--text-3);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 36.6%; background: var(--accent-2);"></div></div>
+          <div class="chart-bar-wrap"><div class="chart-bar-fill" style="width: 15.1%; background: var(--accent);"></div></div>
+        </div>
+        <div class="chart-stats">3.985 / 1.459 / 601 · <b>R=84,9%</b></div>
+      </div>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Đẳng thức đếm: valid_pops = expanded + 1 · popped = valid_pops + stale_pops · generated = (n−1)·expanded</span>
+      <span class="slide-number" data-current="7" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Nguyễn Thế Sơn</strong>.</p>
+      <p>Qua 36 cấu hình độc lập, <strong>100% trường hợp đều cho cùng chi phí tối ưu</strong>. Heuristic hM luôn dẫn đầu về hiệu quả, giúp giảm tới <strong>91,1% số nút mở rộng</strong> trên tập N1. Ngay cả với trường hợp xáo trộn khó nhất là Q, hM vẫn cắt giảm 67,9% nút so với UCS.</p>
+      <p>Ba đẳng thức đếm nút pop, stale và sinh ra đều khớp tuyệt đối từng đơn vị.</p>
+      <p>Có thể bị hỏi: Giảm số nút có đồng nghĩa giảm thời gian chạy không? → Không hoàn toàn, vì tính hB tốn thời gian hơn. Ví dụ ở S0, hM mở rộng bằng hL nhưng chạy chậm hơn vì overhead tính điểm đứt.</p>
+    </aside>
+  </section>
+
+  <!-- ======================================================================
+       SLIDE 8: KẾT LUẬN & GIỚI HẠN (layout: three-column)
+       ====================================================================== -->
+  <section class="slide" data-title="Kết luận & Đóng góp">
+    <p class="kicker">Tổng kết báo cáo · Thảo luận & Hỏi đáp</p>
+    <h2 class="h2">Kết luận, Giới hạn mô hình & Hỏi đáp</h2>
+
+    <div class="grid g3 mt-m" style="align-items: stretch;">
+      <!-- Col 1: Đã chứng minh -->
+      <div class="card card-accent anim-fade-up" data-anim="fade-up">
+        <h4 style="color: var(--accent); margin-top: 0;">🎯 Đã chứng minh</h4>
+        <ul style="padding-left: 16px; font-size: 0.85rem; line-height: 1.6; color: var(--text-2); margin: 0;">
+          <li><b>h<sub>L</sub>, h<sub>B</sub>, h<sub>M</sub> nhất quán:</b> A* luôn tìm ra chi phí tối ưu toàn cục.</li>
+          <li><b>h<sub>Σ</sub> không chấp nhận được:</b> Phép cộng làm vi phạm tính đúng đắn.</li>
+          <li><b>Kiểm tra đích tại POP:</b> Điều kiện tiên quyết khi chi phí bước khác nhau.</li>
+        </ul>
+      </div>
+
+      <!-- Col 2: Quan sát thực nghiệm -->
+      <div class="card card-accent anim-fade-up" data-anim="fade-up">
+        <h4 style="color: var(--accent-2); margin-top: 0;">📊 Thực nghiệm</h4>
+        <ul style="padding-left: 16px; font-size: 0.85rem; line-height: 1.6; color: var(--text-2); margin: 0;">
+          <li><b>N<sub>hM</sub> ≤ N<sub>hL</sub> ≤ N<sub>UCS</sub></b> trên toàn bộ 6 bộ dữ liệu thực nghiệm.</li>
+          <li><b>Xáo trộn ≠ Tối ưu:</b> N₁ xáo 9 bước (cost 43) nhưng lời giải chỉ cần 25.</li>
+          <li><b>Hiệu quả cắt tỉa:</b> h<sub>M</sub> giảm tới 91,1% nút mở rộng.</li>
+        </ul>
+      </div>
+
+      <!-- Col 3: Giới hạn & Đóng góp -->
+      <div class="card card-accent anim-fade-up" data-anim="fade-up">
+        <h4 style="color: var(--warn); margin-top: 0;">⚠️ Giới hạn & Q&A</h4>
+        <ul style="padding-left: 16px; font-size: 0.85rem; line-height: 1.6; color: var(--text-2); margin: 0;">
+          <li>Kích thước thực nghiệm <span class="mono">n ≤ 8</span> do bùng nổ bộ nhớ Heap (<span class="mono">n!</span>).</li>
+          <li>Thời gian (ms) phụ thuộc overhead tính hàm heuristic.</li>
+        </ul>
+        <div style="margin-top: 10px; padding: 6px 10px; background: var(--bg-soft); border-radius: 6px; border: 1px dashed var(--warn); text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--warn);">
+          Kiểm thử Phần D: [CẦN ĐIỀN: x/10 test pass]
+        </div>
+      </div>
+    </div>
+
+    <!-- Thank you banner -->
+    <div style="margin-top: 24px; text-align: center;">
+      <h3 style="margin: 0; font-size: 1.3rem; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;">
+        Xin trân trọng cảm ơn Cô và các Bạn!
+      </h3>
+      <p class="dim" style="font-size: 0.88rem; margin: 4px 0 0;">Nhóm 6 sẵn sàng tiếp nhận các câu hỏi phản biện.</p>
+    </div>
+
+    <div class="deck-footer">
+      <span class="mono">Biểu diễn tri thức & Tìm kiếm nâng cao · TS. Nguyễn Bích Vân</span>
+      <span class="slide-number" data-current="8" data-total="8"></span>
+    </div>
+
+    <aside class="notes">
+      <p>Người trình bày: <strong>Nguyễn Anh Quân</strong>.</p>
+      <p>Nhóm 6 đã giải quyết trọn vẹn bài toán lật bánh pancake với hàm chi phí k. Chúng em đã <strong>chứng minh toán học</strong> tính nhất quán của các hàm heuristic và <strong>kiểm chứng thực nghiệm 36 cấu hình</strong>. Về mặt giới hạn, không gian n! đòi hỏi kỹ thuật cao hơn nếu n vượt quá 8.</p>
+      <p>Nhóm 6 xin cảm ơn cô và các bạn đã lắng nghe. Chúng em rất mong nhận được câu hỏi góp ý từ cô và cả lớp.</p>
+      <p>Có thể bị hỏi: Hướng đi tiếp theo cho n lớn là gì? → Ứng dụng giải thuật IDA* (Iterative Deepening A*) hoặc Pattern Database Heuristic để giải quyết bài toán giới hạn bộ nhớ.</p>
+    </aside>
+  </section>
+
+</div>
+
+<script src="assets/runtime.js"></script>
+<script src="pancake-widget.js"></script>
+</body>
+</html>
