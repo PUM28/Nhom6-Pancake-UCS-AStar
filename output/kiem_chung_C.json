@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "checked_rows": 36,
+  "common_rows": 24,
+  "custom_rows": 12,
+  "seed": 62026,
+  "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:11:29) [Clang 20.1.8 ]",
+  "platform": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "checks": [
+    "Ma trận đủ và không trùng",
+    "CSV khớp JSON",
+    "Đường replay bằng phép đảo độc lập",
+    "Cost/moves/path đúng",
+    "3 đẳng thức số đếm",
+    "3 lần chạy và trung vị đúng",
+    "Cost bằng nhau giữa 6 cấu hình mỗi case",
+    "Seed/lịch sử/đích riêng hợp lệ"
+  ],
+  "pending": [
+    "C3: chờ bản tính tay đã chốt trước khi xuất hai trace H và đối chiếu",
+    "C4: Sơn cần thực hành step/debugger trên máy mình",
+    "Log 3 test riêng không thay log >=10 test của cả nhóm"
+  ]
+}

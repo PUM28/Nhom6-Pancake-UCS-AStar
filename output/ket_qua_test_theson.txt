@@ -1,0 +1,11 @@
+test_six_configurations_match_independent_optimal_costs (test_theson.TheSonTests.test_six_configurations_match_independent_optimal_costs)
+144 cấu hình được so với oracle khác thuật toán, trên đích không chuẩn. ... ok
+test_trace_preserves_search_result_and_counters (test_theson.TheSonTests.test_trace_preserves_search_result_and_counters)
+Ghi trace không đổi tìm kiếm; không so thời gian hay trace với nhau. ... ok
+test_ucs_equals_astar_zero_all_four_pancake_states (test_theson.TheSonTests.test_ucs_equals_astar_zero_all_four_pancake_states)
+h=0 => f=g; cùng thứ tự/FIFO phải chọn cùng bản ghi và lời giải. ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.020s
+
+OK

@@ -1,0 +1,2 @@
+﻿case,n,algorithm,heuristic,order,status,moves,cost,expanded,generated,popped,valid_pops,pushed,stale_pops,improved,reopened,max_frontier,discovered,elapsed_ms,repeat
+H,6,astar,largest,asc,found,4,11,13,65,14,14,51,0,0,0,38,51,0.33045897725969553,1

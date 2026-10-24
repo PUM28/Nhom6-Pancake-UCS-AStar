@@ -1,0 +1,6 @@
+Demo nhỏ thực thi solve(step=True), ấn Enter tự động trong môi trường hỗ trợ.
+
+POP #1: (2, 1, 3, 4); g=0, h=2, f=2; OPEN sau pop (chưa sinh con)=0
+Enter để kiểm tra đích và xử lý trạng thái này; Ctrl+C dừng: 
+POP #2: (1, 2, 3, 4); g=2, h=0, f=2; OPEN sau pop (chưa sinh con)=2
+Enter để kiểm tra đích và xử lý trạng thái này; Ctrl+C dừng: {'status': 'found', 'actions': [2], 'cost': 2, 'moves': 1, 'expanded': 1, 'valid_pops': 2}
